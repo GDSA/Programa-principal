@@ -79,7 +79,7 @@ for i=1:nil
     fprintf(archivo,strcat(nombre(i).noms));
     fprintf(archivo,' ');
     fprintf(archivo,types(indice).type);
-    fprintf(archivo,'\r\n');
+    fprintf(archivo,'\n');
     
       if(mod(i,100)==0) %progreso
         x=num2str(floor(i*100/nil));
