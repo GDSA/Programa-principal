@@ -71,7 +71,7 @@ archivo=fopen(strcat('resultats',tipusExtraccio,'.txt'),'w');
 directori='clas/';
 [nombre,n_model,H]=lecturaImatges_Aval(directori, flag);
 [nil n]=size(n_model);%nil=numero de imagenes leidas
-k=1;
+k=3;
 for i=1:nil
     indice=classificador_knn(n_model(i,:),auxmat,index,k);
     types(indice).type;
