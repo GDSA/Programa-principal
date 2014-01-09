@@ -1,4 +1,4 @@
-%Copyright (c) 2013   Ramon Franquesa Alberti, Carlos Martín Isla , Gonzalo Lopez Lillo , Aleix Gras Godoy 
+%Copyright (c) 2013   Ramon Franquesa Alberti, Carlos Martï¿œn Isla , Gonzalo Lopez Lillo , Aleix Gras Godoy 
 
 
 clear all;
@@ -19,7 +19,7 @@ tipusExtraccio='HISTBLOC';
 
 
 
-%% LECTURA D'IMATGES, EXTRACCIÓ Y ESCRIPTURA DE MODELS
+%% LECTURA D'IMATGES, EXTRACCIï¿œ Y ESCRIPTURA DE MODELS
 
 % saltar este paso si se dispone de modelosX.bin
 tic
@@ -51,9 +51,9 @@ fwrite(fid,elementsperclasse,'uint16'); % PRIMERA FILA DE L'ARXIU : VECTOR AMB S
 fwrite(fid,dataset, 'double'); % MATRIU AMB TOTS ELS MODELS, QUE ES DESENSAMBLA AMB EL VECTOR ANTERIOR
 fclose(fid);
 %%D'aquesta forma emns estalviem fer servir structs per models de mida variable, i aprofitem tota la
-%%potència de matlab.
+%%potï¿œncia de matlab.
 toc
-%% RECUPERACIÓ DE MODELS
+%% RECUPERACIï¿œ DE MODELS
 
 
 fid=fopen(strcat('modelos',tipusExtraccio,'.bin'),'r');
@@ -64,14 +64,14 @@ auxmat=fread(fid,[sum(index) 256*16],'double');
 
 
 
-%% CLASSIFICACIÓ
+%% CLASSIFICACIï¿œ
 
 
 archivo=fopen(strcat('resultats',tipusExtraccio,'.txt'),'w');
 directori='clas/';
 [nombre,n_model,H]=lecturaImatges_Aval(directori, flag);
 [nil n]=size(n_model);%nil=numero de imagenes leidas
-k=3;
+k=1;
 for i=1:nil
     indice=classificador_knn(n_model(i,:),auxmat,index,k);
     types(indice).type;
@@ -79,7 +79,7 @@ for i=1:nil
     fprintf(archivo,strcat(nombre(i).noms));
     fprintf(archivo,' ');
     fprintf(archivo,types(indice).type);
-    fprintf(archivo,'\n');
+    fprintf(archivo,'\r\n');
     
       if(mod(i,100)==0) %progreso
         x=num2str(floor(i*100/nil));
@@ -89,42 +89,123 @@ fclose(archivo);
 
 
 
-%% AVALUACIÓ
+%% AVALUACIï¿œ
+%%importar csv
 
-x = csvimport('sed2013_task2_dataset_train_gs.csv');
-% Comparem si és correcte o no la classificació.
-asn1 = csvimport(strcat('resultats',tipusExtraccio,'.txt'));
+close all
+clear all
+fid= fopen('sed2013_task2_dataset_train_gs.csv');
+C = textscan(fid, '%s%s');
+fclose(fid);
 
-n = length(x);
-m = length(asn1);
+L=length(C{1});
+k=1;
+
+id=C{1}(2:L);
+l=length(unique(id));
+clear id;
+tag=cell(l,1);
+Id = tag;
+ref = char(C{1}(2));
+stri= '';
+for i=1:L-1                 % map key: id_photo data: tags
+    len = length(char(C{1}(i+1)));
+    if len == length (ref)
+        if sum (char(C{1}(i+1))== ref) == len 
+            stri=[stri ' ' char(C{2}(i+1))];
+        else
+            tag(k) = cellstr(stri);
+            Id(k) = C{1}(i) ;
+            stri = '';
+            stri=[stri ' ' char(C{2}(i+1))];
+            k = k+1;
+        end
+    else
+        tag(k) = cellstr(stri);
+        Id(k) = C{1}(i) ;
+        stri = '';
+        stri=[stri ' ' char(C{2}(i+1))];
+        k = k+1;
+            
+    end
+    ref = char(C{1}(i+1));
+    
+end
+    tag(k) = cellstr(stri);
+    Id(k) = C{1}(i) ;
+
+
+map_tag = containers.Map(Id,tag);
+%
+clear Id tag C stri len ref i l fid k;
+
+
+% LECTURA CLASSES
+
+fid= fopen('sed2013_task2_dataset_train_gs.csv');
+M = textscan(fid, '%s%s');
+fclose(fid);
+L = length(M{1});
+id = M {1}(2:L);
+class = M {2}(2:L);
+
+
+
+data_map = containers.Map(id,class);    %map key: id_photo data: class
+
+clear data L M fid;
+
+%
+
 IN=[1 2 3 4 5 6 7 8 9];
-OUT=[NaN NaN NaN NaN NaN NaN NaN NaN NaN];
+OUT1=[NaN NaN NaN NaN NaN NaN NaN NaN NaN];
+ext = dir('11.txt'); %extencio imatges // INTRODUIR ARXIU A CLASSIFICAR!!!!!//
+W = numel(ext);
+for i = 1:W    %loop lectura
 
-for k = 1:m
-    [id clase_pre] = spacecuter(asn1(k));
-    evento_pre = strcat(clase_pre);
+filename = ext(i).name;
+fid= fopen(filename);
+M = textscan(fid, '%s%s');
+fclose(fid);
+l = length(M{1});
+    N = M{1};
+    C = M{2};
+    
+   OUT =[N C];
 
 
-for i = 2:n
-[on clase_tro] = spacecuter(x(i));
-ev =troba(id, on);
-if (ev == length(id))
-    evento = strcat(clase_tro);
-    IN(k+9) = avaluat(evento_pre);
-    OUT(k+9) = avaluat(evento);
-      break;
+
+result = zeros (9);                %Matriu de confusio
+e = 0;
+true = 0;
+
+for j = 1 : length(OUT)    %length(R)
+
+    N = char(OUT (j,1));
+    C = char(OUT (j,2));
+  
+    
+    p = classidentify(C);         %classe predicció
+
+    if isKey(data_map,N)
+        gt = classidentify (data_map(N)); %classe ground truth
+    end
+    
+      IN(j+9) = p;
+     OUT1(j+9) = gt;
+    result(gt,p) = result(gt,p)+1;
 end
 end
-end
+
+%
 
 
-
-g1 = [IN];
-g2 = [OUT];
-[C,order] = confusionmat(g1,g2)
-Pr=0
-Re=0
-Fscore=0
+g2 = [IN];
+g1 = [OUT1];
+[C,order] = confusionmat(g1,g2);
+Pr=0;
+Re=0;
+Fscore=0;
 
 %Avaluacio de les dades
 for l = 1:9
@@ -143,11 +224,75 @@ Fscore(l) = 2*((Pr(l)*Re(l))/(Pr(l)+Re(l)));
 
 end
 
-Pr_avg=mean(Pr);
+% Calculem quants ground truth hi ha.
+
+KKOUT=OUT1;
+c1=0;c2=0;c3=0;c4=0;c5=0;c6=0;c7=0;c8=0;c9=0;
+kout= length(KKOUT);
+for pout = 9:kout;
+    
+   if( KKOUT(pout) == 1)
+       c1=1;    
+   end
+   if( KKOUT(pout) == 2)
+       c2=1;    
+   end
+    if( KKOUT(pout) == 3)
+       c3=1;    
+    end
+    if( KKOUT(pout) == 4)
+       c4=1;    
+    end
+    if( KKOUT(pout) == 5)
+       c5=1;    
+    end
+    if( KKOUT(pout) == 6)
+       c6=1;    
+    end
+    if( KKOUT(pout) == 7)
+       c7=1;    
+    end
+    if( KKOUT(pout) == 8)
+       c8=1;    
+    end
+    if( KKOUT(pout) == 9)
+       c9=1;    
+   end
+
+end
+
+ctotal = c1+c2+c3+c4+c5+c6+c7+c8+c9;
+% Calcul de la precisió total!!
+Fstotal=0;
+Puta=isnan(Fscore);
+Fscore;
+for pres = 1:length(Fscore)
+   
+    if(Puta(pres) == 0)
+        Fstotal=Fstotal+Fscore(pres);
+    
+    end
+  
+end
+Fstotal=Fstotal/ctotal
 Re_avg = mean(Re);
-Fscore_avg = mean(Fscore);
+Pr_avg = mean(Pr);
+%
+kk = length(IN);
+Encerts= 0;
+Fals= 0;
+for KK = 9:kk
+
+if (IN(KK) == OUT1(KK))
+   Encerts= Encerts+1;
+else Fals = Fals +1;
+end
+end
+
+Accuraciy = (Encerts/(Encerts+Fals))*100;
 
 
+%
 f = figure('Position',[400 400 800 500]);
 dat = C; 
 cnames = {'Concert','Conference','Exhibition','Fashion','Non_event','Others','Protest','Sports','Theatre'};
@@ -171,10 +316,10 @@ rnames = {'F-score'};
 t = uitable('Parent',f,'Data',dat,'ColumnName',cnames,'RowName',rnames,'Position',[30 100 700 50]);
 set(t,'ColumnWidth',{50})
 
-dat = [Pr_avg Re_avg Fscore_avg];
+dat = [Pr_avg Re_avg Fstotal Accuraciy];
 rnames = {'Avg'};
-cnames = {'Precision', 'Recall','F-score'};
-t = uitable('Parent',f,'Data',dat,'ColumnName',cnames,'RowName',rnames,'Position',[30 450 200 50]);
+cnames = {'Precision', 'Recall','F-score', 'Accuracity'};
+t = uitable('Parent',f,'Data',dat,'ColumnName',cnames,'RowName',rnames,'Position',[30 150 300 50]);
 set(t,'ColumnWidth',{50})
 %%
 figure(3);
@@ -190,7 +335,3 @@ axis([1 9 0 1]);
 subplot(4,1,4);
 plot(Pr,Re);title('Corba PR');ylabel('Precision');xlabel('Recall');
 axis([0 1 0 1]);
-
-%% Normal Mutual Information
-
- MIhat = MutualInfo(C,C);
